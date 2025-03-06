@@ -180,7 +180,7 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
             past_key_values = None
         
         generation_config, model_kwargs = model._prepare_generation_config(
-            None, do_sample=True
+            None, do_sample=False
             # change this to modify generate config
             #top_k=5, top_p=0.85, temperature=0.1
         )
@@ -263,6 +263,9 @@ def prefill_and_generate(model, tokenizer, inputs, max_new_tokens=10000, use_cud
     total_time = time.time() - start_time
     tokens_generated = len(tokens)
     tokens_per_second = tokens_generated / total_time
+    for layer in range(61):
+        torch.save(past_key_values.key_cache[layer].detach().cpu(), f"./kv_cache/layer_{layer}.pt")
+    
 
     print("")
 

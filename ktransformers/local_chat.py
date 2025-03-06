@@ -56,9 +56,9 @@ def local_chat(
     model_path: str | None = None,
     optimize_config_path: str = None,
     gguf_path: str | None = None,
-    max_new_tokens: int = 300,
+    max_new_tokens: int = 100,
     cpu_infer: int = Config().cpu_infer,
-    use_cuda_graph: bool = True,
+    use_cuda_graph: bool = False,
     prompt_file : str | None = None,
     mode: str = "normal",
     force_think: bool = False,
@@ -181,4 +181,5 @@ def local_chat(
 
 
 if __name__ == "__main__":
-    fire.Fire(local_chat)
+    #fire.Fire(local_chat)
+    local_chat(model_path="/mnt/data/model/DeepSeek-V3", gguf_path="/mnt/data/model/DeepseekV3-q4km-gguf", cpu_infer=33, force_think=False, optimize_config_path="/home/djw/ktransformers/ktransformers/optimize/optimize_rules/DeepSeek-V3-Chat.yaml", prompt_file="test_prompt.txt")

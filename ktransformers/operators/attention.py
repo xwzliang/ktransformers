@@ -57,6 +57,8 @@ class KDeepseekV2Attention(BaseInjectedModule, DeepseekV2Attention):
         self.chunck_size = chunck_size # TODO, generate chunck_size automatically.
         self.mla_wrapper = None
         self.absorb_for_prefill = absorb_for_prefill
+        self.layer_id = self.key.split(".")[1]
+        self._forward_count = 0
 
     def get_absorbed(self) -> Tuple[torch.Tensor, torch.Tensor]:
         if not (hasattr(self, 'q_absorb') and hasattr(self, 'out_absorb')):
@@ -272,6 +274,12 @@ class KDeepseekV2Attention(BaseInjectedModule, DeepseekV2Attention):
             print("position_ids", torch.isnan(position_ids).any())
             """
 
+            filename_q_nope = f"./triton_output/layer_{self.layer_id}_forward_{self._forward_count}_q_nope.pt"
+            filename_q_pe = f"./triton_output/layer_{self.layer_id}_forward_{self._forward_count}_q_pe.pt"
+            torch.save(q_nope.detach().cpu(), filename_q_nope)
+            torch.save(q_pe.detach().cpu(), filename_q_pe)
+            self._forward_count += 1
+
             # flash attn doesn't support head_dim bigger than 256
             # use triton attention kernel adapted from vLLM and SGLang for MQA
             decode_attention_fwd_grouped(query_states, compressed_kv_with_k_pe, compressed_kv, attn_output,
@@ -280,7 +288,10 @@ class KDeepseekV2Attention(BaseInjectedModule, DeepseekV2Attention):
                              4, #num_kv_splits # follow vLLM, fix it TODO
                              self.softmax_scale,
                              past_key_value.page_size)
-            
+
+            filename_attn_output = f"./triton_output/layer_{self.layer_id}_forward_{self._forward_count}_attn_output.pt"
+            torch.save(attn_output.detach().cpu(), filename_attn_output)
+
             # attn_output [bsz, q_len, self.num_heads, self.kv_lora_rank]
             # out_absorb [self.num_heads, self.v_head_dim, self.kv_lora_rank]
             attn_output = attn_output.transpose(1, 2)
@@ -434,7 +445,12 @@ class KDeepseekV2Attention(BaseInjectedModule, DeepseekV2Attention):
                                         self.softmax_scale,
                                         q_nope.dtype,
                                         compressed_kv.dtype)
+            filename_q_nope = f"./flashinfer_output/layer_{self.layer_id}_forward_{self._forward_count}_q_nope.pt"
+            filename_q_pe = f"./flashinfer_output/layer_{self.layer_id}_forward_{self._forward_count}_q_pe.pt"
+            torch.save(q_nope.detach().cpu(), filename_q_nope)
+            torch.save(q_pe.detach().cpu(), filename_q_pe)
             attn_output = self.mla_wrapper.run(q_nope, q_pe, compressed_kv, k_pe).view(bsz, q_len, self.num_heads, self.kv_lora_rank)
+            self._forward_count += 1
             """
             k = (
                 torch.cat([compressed_kv, k_pe], dim=-1)
@@ -454,7 +470,8 @@ class KDeepseekV2Attention(BaseInjectedModule, DeepseekV2Attention):
             )
             attn_output = attn_ref.view(bsz, q_len, self.num_heads, self.kv_lora_rank)
             """
-            
+            filename_attn_output = f"./flashinfer_output/layer_{self.layer_id}_forward_{self._forward_count}_attn_output.pt"
+            torch.save(attn_output.detach().cpu(), filename_attn_output)
             # mla_wrapper run output: [tokens, self.num_heads, self.kv_lora_rank]
             # attn_output [bsz, q_len, self.num_heads, self.kv_lora_rank]
             # out_absorb [self.num_heads, self.v_head_dim, self.kv_lora_rank]
