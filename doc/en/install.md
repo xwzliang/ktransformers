@@ -29,7 +29,7 @@ Some preparation:
   fi
 
   if [ -d "/usr/local/cuda" ]; then
-      export CUDA_PATH=$CUDA_PATH:/usr/local/cuda
+      export CUDA_PATH=/usr/local/cuda
   fi
   ```
 
