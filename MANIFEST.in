@@ -11,3 +11,4 @@ graft ktransformers/website/dist
 global-exclude __pycache__
 include KTransformersOps.*.so
 include cpuinfer_ext.*.so
+recursive-include csrc/balance_serve/build/third_party/prometheus-cpp/lib *.so*

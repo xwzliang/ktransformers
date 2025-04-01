@@ -27,7 +27,7 @@ from pathlib import Path
 from packaging.version import parse
 import torch.version
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages, Command
 from cpufeature.extension import CPUFeature
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME, ROCM_HOME
 try:
@@ -229,6 +229,40 @@ class VersionInfo:
         return package_version
 
 
+class InstallFlashInferCommand(Command):
+    """
+    Custom command to install custom_flashinfer package from third_party directory
+    """
+    description = "Install custom_flashinfer from third_party directory"
+    user_options = []
+    
+    def initialize_options(self):
+        pass
+        
+    def finalize_options(self):
+        pass
+        
+    def run(self):
+        print("Installing custom_flashinfer from third_party directory...")
+        
+        # Path to the custom_flashinfer package
+        flashinfer_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                       "third_party", "custom_flashinfer")
+        
+        # Check if the directory exists
+        if not os.path.exists(flashinfer_path):
+            print(f"Warning: {flashinfer_path} does not exist")
+            return
+            
+        try:
+            # Install the package
+            subprocess.check_call([sys.executable, "-m", "pip", "install", flashinfer_path])
+            print("custom_flashinfer installation completed successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"Error installing custom_flashinfer: {e}")
+            raise
+
+
 class BuildWheelsCommand(_bdist_wheel):
     def get_wheel_name(self,):
         version_info = VersionInfo()
@@ -239,11 +273,15 @@ class BuildWheelsCommand(_bdist_wheel):
         wheel_url = VersionInfo.BASE_WHEEL_URL.format(tag_name=f"v{flash_version}", wheel_filename=wheel_filename)
         return wheel_filename, wheel_url
 
-
     def run(self):
+        # Run the original bdist_wheel command
         if VersionInfo.FORCE_BUILD:
             super().run()
+            
+            # Install custom_flashinfer after building the wheel
+            self.run_command('install_flashinfer')
             return
+            
         wheel_filename, wheel_url = self.get_wheel_name()
         print("Guessing wheel URL: ", wheel_url)
         try:
@@ -264,6 +302,9 @@ class BuildWheelsCommand(_bdist_wheel):
             print("Precompiled wheel not found. Building from source...")
             # If the wheel could not be downloaded, build from source
             super().run()
+            
+            # Install custom_flashinfer after building the wheel
+            self.run_command('install_flashinfer')
 
 
 # Convert distutils Windows platform specifiers to CMake -A arguments
@@ -465,9 +506,33 @@ if with_balance:
         CMakeExtension("balance_serve", os.fspath(Path("").resolve()/ "csrc"/ "balance_serve"))
     )
 
+# Add custom_flashinfer to package_data
+flashinfer_package_data = []
+flashinfer_path = Path("third_party/custom_flashinfer").resolve()
+if flashinfer_path.exists():
+    for file in flashinfer_path.glob("**/*.py"):
+        rel_path = file.relative_to(flashinfer_path)
+        flashinfer_package_data.append(str(rel_path))
+    for file in flashinfer_path.glob("**/*.so"):
+        rel_path = file.relative_to(flashinfer_path)
+        flashinfer_package_data.append(str(rel_path))
+
 setup(
     name=VersionInfo.PACKAGE_NAME,
     version=VersionInfo().get_package_version(),
-    cmdclass={"bdist_wheel":BuildWheelsCommand ,"build_ext": CMakeBuild},
-    ext_modules=ext_modules
+    cmdclass={
+        "bdist_wheel": BuildWheelsCommand,
+        "build_ext": CMakeBuild,
+        "install_flashinfer": InstallFlashInferCommand,
+    },
+    ext_modules=ext_modules,
+    packages=find_packages() + ['custom_flashinfer'],  # include custom_flashinfer
+    package_data={
+        "ktransformers": [
+            "**/*.so*",  
+            "csrc/balance_serve/build/third_party/prometheus-cpp/lib/*.so*",
+        ],
+        "custom_flashinfer": flashinfer_package_data,
+    },
+    include_package_data=True, # include package data files
 )
