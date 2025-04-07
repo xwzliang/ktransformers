@@ -12,7 +12,7 @@ https://github.com/Dao-AILab/flash-attention/blob/v2.6.3/setup.py
 Copyright (c) 2023, Tri Dao.
 Copyright (c) 2024 by KVCache.AI, All Rights Reserved.
 '''
-
+import glob
 import os
 import sys
 import re
@@ -228,41 +228,6 @@ class VersionInfo:
             return flash_version
         return package_version
 
-
-class InstallFlashInferCommand(Command):
-    """
-    Custom command to install custom_flashinfer package from third_party directory
-    """
-    description = "Install custom_flashinfer from third_party directory"
-    user_options = []
-    
-    def initialize_options(self):
-        pass
-        
-    def finalize_options(self):
-        pass
-        
-    def run(self):
-        print("Installing custom_flashinfer from third_party directory...")
-        
-        # Path to the custom_flashinfer package
-        flashinfer_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-                                       "third_party", "custom_flashinfer")
-        
-        # Check if the directory exists
-        if not os.path.exists(flashinfer_path):
-            print(f"Warning: {flashinfer_path} does not exist")
-            return
-            
-        try:
-            # Install the package
-            subprocess.check_call([sys.executable, "-m", "pip", "install", flashinfer_path])
-            print("custom_flashinfer installation completed successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Error installing custom_flashinfer: {e}")
-            raise
-
-
 class BuildWheelsCommand(_bdist_wheel):
     def get_wheel_name(self,):
         version_info = VersionInfo()
@@ -279,7 +244,7 @@ class BuildWheelsCommand(_bdist_wheel):
             super().run()
             
             # Install custom_flashinfer after building the wheel
-            self.run_command('install_flashinfer')
+            # self.run_command('install_flashinfer')
             return
             
         wheel_filename, wheel_url = self.get_wheel_name()
@@ -443,6 +408,30 @@ class CMakeBuild(BuildExtension):
             ["cmake", "--build", ".", "--verbose", *build_args], cwd=build_temp, check=True
         )
 
+        print(f"Extension directory (wheel root): {extdir}")
+        prometheus_lib_path = os.path.join(build_temp, "third_party", "prometheus-cpp", "lib")
+        if os.path.exists(prometheus_lib_path):
+            print(f"Found Prometheus libraries at: {prometheus_lib_path}")
+            for lib_file in glob.glob(os.path.join(prometheus_lib_path, "*.so*")):
+                lib_name = os.path.basename(lib_file)
+                target_file = os.path.join(extdir, lib_name)
+                print(f"Copying {lib_file} to {target_file}")
+                shutil.copy(lib_file, target_file)
+        else:
+            print(f"Warning: Prometheus library path not found at {prometheus_lib_path}")
+            result = subprocess.run(
+                ["find", str(build_temp), "-name", "libprometheus-cpp*.so*"], 
+                capture_output=True, text=True, check=False
+            )
+            if result.stdout:
+                print(f"Found prometheus libraries at alternative locations: {result.stdout}")
+                for lib_file in result.stdout.strip().split('\n'):
+                    if lib_file:
+                        lib_name = os.path.basename(lib_file)
+                        target_file = os.path.join(extdir, lib_name)
+                        print(f"Copying {lib_file} to {target_file}")
+                        shutil.copy(lib_file, target_file)
+
 if CUDA_HOME is not None or ROCM_HOME is not None:
     ops_module = CUDAExtension('KTransformersOps', [
         'csrc/ktransformers_ext/cuda/custom_gguf/dequant.cu',
@@ -506,16 +495,6 @@ if with_balance:
         CMakeExtension("balance_serve", os.fspath(Path("").resolve()/ "csrc"/ "balance_serve"))
     )
 
-# Add custom_flashinfer to package_data
-flashinfer_package_data = []
-flashinfer_path = Path("third_party/custom_flashinfer").resolve()
-if flashinfer_path.exists():
-    for file in flashinfer_path.glob("**/*.py"):
-        rel_path = file.relative_to(flashinfer_path)
-        flashinfer_package_data.append(str(rel_path))
-    for file in flashinfer_path.glob("**/*.so"):
-        rel_path = file.relative_to(flashinfer_path)
-        flashinfer_package_data.append(str(rel_path))
 
 setup(
     name=VersionInfo.PACKAGE_NAME,
@@ -523,16 +502,8 @@ setup(
     cmdclass={
         "bdist_wheel": BuildWheelsCommand,
         "build_ext": CMakeBuild,
-        "install_flashinfer": InstallFlashInferCommand,
     },
     ext_modules=ext_modules,
-    packages=find_packages() + ['custom_flashinfer'],  # include custom_flashinfer
-    package_data={
-        "ktransformers": [
-            "**/*.so*",  
-            "csrc/balance_serve/build/third_party/prometheus-cpp/lib/*.so*",
-        ],
-        "custom_flashinfer": flashinfer_package_data,
-    },
-    include_package_data=True, # include package data files
+    packages=find_packages(),
+    include_package_data=True,
 )
