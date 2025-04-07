@@ -16,60 +16,60 @@ jobs:
       matrix:
         include:
         # Ubuntu
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
-         - { os: ubuntu-20.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.12', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.11', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.4.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '124'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.2.2', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'FANCY', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '121'}
+         - { os: ubuntu-22.04, pyver:  '3.10', cuda: '12.1.1', torch: '2.3.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX2', torch_cu: '121'}
 
          # Windows
          - { os: windows-2022, pyver:  '3.12', cuda: '12.5.1', torch: '2.4.0', cudaarch: '8.0;8.6;8.7;8.9;9.0+PTX', instruct: 'AVX512', torch_cu: '124'}
@@ -165,6 +165,10 @@ jobs:
         if: matrix.cuda != ''
         run: |
           git submodule update --init --recursive
+          pip3 install cmake --upgrade
+          sudo apt-get update
+          sudo apt-get install libtbb-dev libssl-dev libcurl4-openssl-dev libaio1 libaio-dev libfmt-dev
+          sudo apt-get install libgflags-dev zlib1g-dev patchelf
           if($IsWindows){
             $originalPath = Get-Location
             Import-Module 'C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\Tools\Microsoft.VisualStudio.DevShell.dll'
