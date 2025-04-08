@@ -75,59 +75,69 @@ If you want to use numa support, not only do you need to set USE_NUMA=1, but you
 sudo apt install libtbb-dev libssl-dev libcurl4-openssl-dev libaio1 libaio-dev libgflags-dev zlib1g-dev libfmt-dev
 ```
 
-<!-- 1. ~~Use a Docker image, see [documentation for Docker](./doc/en/Docker.md)~~
-   
-   >We are working on the latest docker image, please wait for a while.
+1. Use a Docker image, see [documentation for Docker](./doc/en/Docker.md)
+   ```sh
+   docker pull approachingai/ktransformers:v0.2.4-AVX512
+   docker run -it --gpus all --privileged --shm-size 64g --name ktrans --network=host -v /mnt:/mnt approachingai/ktransformers:v0.2.4-AVX512 /bin/bash
+   # Open a new terminal
+   docker exec -it ktrans bash
+   ```
 
-2. ~~You can install using Pypi (for linux):~~
-    > We are working on the latest pypi package, please wait for a while.
+2. You can install using Pypi (for linux):
    
    ```
+   git clone https://github.com/kvcache-ai/ktransformers.git
+   cd ktransformers
+   pip install -r requirements-local_chat.txt
+   pip install -r ktransformers/server/requirements.txt
+   git submodule update --init --recursive
+   pip install third_party/custom_flashinfer # we need to install a customed flashinfer
    pip install ktransformers --no-build-isolation
+   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(python -c "import site; print(site.getsitepackages()[0])")
    ```
    
-   for windows we prepare a pre compiled whl package on [ktransformers-0.2.0+cu125torch24avx2-cp312-cp312-win_amd64.whl](https://github.com/kvcache-ai/ktransformers/releases/download/v0.2.0/ktransformers-0.2.0+cu125torch24avx2-cp312-cp312-win_amd64.whl), which require cuda-12.5, torch-2.4, python-3.11, more pre compiled package are being produced.  -->
+   for windows we prepare a pre compiled whl package on [ktransformers-0.2.0+cu125torch24avx2-cp312-cp312-win_amd64.whl](https://github.com/kvcache-ai/ktransformers/releases/download/v0.2.0/ktransformers-0.2.0+cu125torch24avx2-cp312-cp312-win_amd64.whl), which require cuda-12.5, torch-2.4, python-3.11, more pre compiled package are being produced. 
 
-Download source code and compile:
+3. Download source code and compile:
 
-- init source code
+   - init source code
 
-  ```sh
-  git clone https://github.com/kvcache-ai/ktransformers.git
-  cd ktransformers
-  git submodule update --init --recursive
-  ```
-- [Optional] If you want to run with website, please [compile the website](./api/server/website.md) before execute ``bash install.sh``
-- For Linux
+     ```sh
+     git clone https://github.com/kvcache-ai/ktransformers.git
+     cd ktransformers
+     git submodule update --init --recursive
+     ```
+   - [Optional] If you want to run with website, please [compile the website](./api/server/website.md) before execute ``bash install.sh``
+   - For Linux
 
-  - For simple install:
+     - For simple install:
 
-    ```shell
-    bash install.sh
-    ```
-  - For those who have two cpu and 1T RAM:
+       ```shell
+       bash install.sh
+       ```
+     - For those who have two cpu and 1T RAM:
 
-    ```shell
-    # Make sure your system has dual sockets and double size RAM than the model's size (e.g. 1T RAM for 512G model)
-     apt install libnuma-dev
-     export USE_NUMA=1
-     bash install.sh # or #make dev_install
-    ```
-  - For Multi-concurrency with 500G RAM:
+       ```shell
+       # Make sure your system has dual sockets and double size RAM than the model's size (e.g. 1T RAM for 512G model)
+        apt install libnuma-dev
+        export USE_NUMA=1
+        bash install.sh # or #make dev_install
+       ```
+     - For Multi-concurrency with 500G RAM:
 
-    ```shell
-    USE_BALANCE_SERVE=1 bash ./install.sh
-    ```
-  - For Multi-concurrency with two cpu and 1T RAM:
+       ```shell
+       USE_BALANCE_SERVE=1 bash ./install.sh
+       ```
+     - For Multi-concurrency with two cpu and 1T RAM:
 
-    ```shell
-    USE_BALANCE_SERVE=1 USE_NUMA=1 bash ./install.sh
-    ```
-- For Windows (Windows native temprarily deprecated, please try WSL)
+       ```shell
+       USE_BALANCE_SERVE=1 USE_NUMA=1 bash ./install.sh
+       ```
+   - For Windows (Windows native temprarily deprecated, please try WSL)
 
-  ```shell
-  install.bat
-  ```
+     ```shell
+     install.bat
+     ```
 
 * If you are developer, you can make use of the makefile to compile and format the code. <br> the detailed usage of makefile is [here](./makefile_usage.md)
 
