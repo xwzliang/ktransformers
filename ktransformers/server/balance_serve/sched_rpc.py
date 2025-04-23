@@ -72,9 +72,9 @@ class SchedulerServer:
                     worker.send(pickle.dumps(response))
 
                 elif method == 'cancel_query':
-                    query_id = params.get('query_id')
+                    query_cancel = params.get('query')
                     # 假设您的 Scheduler 类实现了 cancel 方法
-                    self.sched.cancel(query_id)
+                    self.sched.cancel(query_cancel)
                     response = {'status': 'ok'}
                     worker.send(pickle.dumps(response))
 
@@ -181,9 +181,10 @@ class SchedulerClient:
         response = self.send_request('add_query', {'query': query})
         return response.get('query_id')
     
-    def cancel_query(self, query_id):
-        self.send_request('cancel_query', {'query_id': query_id})
-    
+    def cancel_query(self, query):
+        self.send_request('cancel_query', {'query': query})
+        # no need to return
+
     def update_last_batch(self, updates):
         response = self.send_request('update_last_batch', {'updates': updates})
         # print(f"update_last_batch response {response}")

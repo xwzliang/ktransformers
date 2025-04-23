@@ -151,6 +151,10 @@ struct QueryAdd {
   static QueryAdd deserialize(const std::string &input);
 };
 
+struct QueryCancel {
+  QueryID id;
+};
+
 class Scheduler {
 public:
   virtual void init(Settings settings) = 0;
@@ -160,7 +164,7 @@ public:
 
   // webserver call this
   virtual QueryID add_query(QueryAdd query) = 0;
-  virtual void cancel_query(QueryID id) = 0;
+  virtual void cancel_query(QueryCancel cancel) = 0;
 
   // inference loop call this
   virtual std::shared_ptr<BatchQueryTodo>

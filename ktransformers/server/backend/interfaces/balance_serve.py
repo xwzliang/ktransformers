@@ -429,6 +429,10 @@ class BalanceServeInterface(BackendInterfaceBase):
         profiler.create_and_start_timer("prefill")
         
         query_add = sched_ext.QueryAdd()
+        # query_cancel = sched_ext.QueryCancel()
+        # query_cancel.id = query_id
+        # self.sched_client.cancel_query(query_cancel)
+        
         query_add.query_token =  input_ids[0].tolist()
         query_length = input_ids[0].shape[0]
         query_add.query_length = query_length

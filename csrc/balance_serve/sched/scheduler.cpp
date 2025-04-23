@@ -148,7 +148,8 @@ struct Query {
     Metrics *met;
   } ctx;
 
-  void after_load(bool ok);
+  void after_load(bool ok,
+                  std::shared_ptr<kvc2::DoubleCacheHandleInterface> handle);
 
   void to_status(Status to);
 
@@ -324,6 +325,7 @@ struct KVC2_Maintainer {
 };
 
 using EventAddQuery = std::pair<QueryAdd, std::promise<QueryID> *>;
+using EventCancelQuery = QueryCancel;
 using EventUpdateQuery = BatchQueryUpdate;
 using EventTakenBatch = std::shared_ptr<BatchQueryTodo>;
 struct EventPrepare {
@@ -333,6 +335,7 @@ struct EventPrepare {
 struct EventPrepared {
   QueryID query_id;
   bool ok;
+  std::shared_ptr<kvc2::DoubleCacheHandleInterface> handle;
 };
 
 struct EventQueryStatus {
@@ -341,14 +344,18 @@ struct EventQueryStatus {
 };
 struct EventSchedule {};
 
-using Event =
-    std::variant<EventAddQuery, EventUpdateQuery, EventTakenBatch, EventPrepare,
-                 EventPrepared, EventQueryStatus, EventSchedule>;
+using Event = std::variant<EventAddQuery, EventCancelQuery, EventUpdateQuery,
+                           EventTakenBatch, EventPrepare, EventPrepared,
+                           EventQueryStatus, EventSchedule>;
 
 template <typename T> std::string event_name(const T &event);
 
 template <> std::string event_name(const EventAddQuery &) {
   return "EventAddQuery";
+}
+
+template <> std::string event_name(const EventCancelQuery &) {
+  return "EventCancelQuery";
 }
 
 template <> std::string event_name(const EventUpdateQuery &) {
@@ -533,15 +540,17 @@ struct QueryMaintainer : public Scheduler {
     return p.get_future().get();
   }
 
-  void cancel_query(QueryID id) override {
-    SPDLOG_INFO("Cancel Query");
-    SPDLOG_INFO("sched:{} Cancel Query", fmt::ptr(this));
-    auto it = query_map.find(id);
-    if (it == query_map.end()) {
-      SPDLOG_ERROR("Query {} is not found", id);
-      return;
-    }
-    query_map.erase(it);
+  void cancel_query(QueryCancel query_cancel) override {
+    SPDLOG_INFO("Canceling Query {}", query_cancel.id);
+    event_loop_queue.enqueue(query_cancel);
+    // SPDLOG_INFO("sched:{} Cancel Query", fmt::ptr(this));
+    // auto id = query_cancel.id;
+    // auto it = query_map.find(id);
+    // if (it == query_map.end()) {
+    //   SPDLOG_ERROR("Query {} is not found", id);
+    //   return;
+    // }
+    // query_map.erase(it);
   }
 
   // Here this function update last batch results and get the next batch
@@ -579,6 +588,7 @@ struct QueryMaintainer : public Scheduler {
   }
 
   virtual void strategy_add_query(Q new_query) = 0;
+  virtual void strategy_cancel_query(QueryCancel cancel) = 0;
   virtual void strategy_update_query(const EventUpdateQuery &update) = 0;
   virtual void strategy_taken_batch(const EventTakenBatch &batch) = 0;
   virtual void strategy_prepare(const EventPrepare &prepare) = 0;
@@ -596,6 +606,11 @@ struct QueryMaintainer : public Scheduler {
     query_map[id] = new_query;
     SPDLOG_INFO("New Query {} is added", id);
     strategy_add_query(new_query);
+  }
+
+  void tackle_event(EventCancelQuery &event) {
+    query_map.erase(event.id);
+    strategy_cancel_query(event);
   }
 
   void tackle_event(const EventUpdateQuery &update) {
@@ -730,12 +745,10 @@ void Query::to_status(Status to) {
         [this](std::shared_ptr<kvc2::DoubleCacheHandleInterface> handle) {
           if (handle == nullptr) {
             SPDLOG_INFO("Get handle from kvc2 Failed.");
-            this->after_load(false);
+            this->after_load(false, nullptr);
           } else {
             SPDLOG_INFO("Get handle from kvc2 Success.");
-            this->kvc2_handle = handle;
-            this->to_status(Ready);
-            this->after_load(true);
+            this->after_load(true, handle);
           }
         });
     break;
@@ -770,7 +783,8 @@ void Query::to_status(Status to) {
   export_metrics();
 }
 
-void Query::after_load(bool ok) {
+void Query::after_load(
+    bool ok, std::shared_ptr<kvc2::DoubleCacheHandleInterface> handle) {
   if (ok) {
     size_t page_count =
         div_up(estimated_length, ctx.query_maintainer->settings.page_size);
@@ -790,6 +804,7 @@ void Query::after_load(bool ok) {
     ctx.query_maintainer->event_loop_queue.enqueue(EventPrepared{
         .query_id = id,
         .ok = ok,
+        .handle = handle,
     });
   } else {
     ctx.query_maintainer->event_loop_queue.enqueue(EventPrepare{
@@ -817,6 +832,16 @@ struct FCFS_single_prefill : public QueryMaintainer {
       queue.pop();
       event_loop_queue.enqueue(EventPrepare{next_q->id, true});
     }
+  }
+
+  void strategy_cancel_query(QueryCancel cancel) override {
+    auto it = query_map.find(cancel.id);
+    if (it == query_map.end()) {
+      SPDLOG_ERROR("Query {} is not found", cancel.id);
+      return;
+    }
+    auto q = it->second;
+    q->to_status(Query::Done);
   }
 
   void strategy_update_query(const EventUpdateQuery &update) override {
@@ -849,7 +874,14 @@ struct FCFS_single_prefill : public QueryMaintainer {
 
   void strategy_prepared(const EventPrepared &prepared) override {
     assert(prepared.ok);
-    ready_queue.push(query_map[prepared.query_id]);
+    auto q = query_map[prepared.query_id];
+    if (q->plan_status == Query::Done) {
+      SPDLOG_INFO("Query {} is already done", prepared.query_id);
+      return;
+    }
+    q->to_status(Query::Ready);
+    q->kvc2_handle = prepared.handle;
+    ready_queue.push(q);
     if (queue.empty() == false) {
       auto next_q_prepare = queue.front();
       queue.pop();
