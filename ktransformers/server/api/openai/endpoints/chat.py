@@ -201,153 +201,156 @@ async def chat_completion(request: Request, create: ChatCompletionCreate):
                 "<tools▁end>":"<｜tool▁calls▁end｜>"
             }
             # Use check_client_connected for early stopping
-            async for res in interface.inference(input_message, id, create.temperature, create.top_p, create.max_tokens, create.max_completion_tokens):
-                if isinstance(res, RawUsage):
-                    # Final return on utilization
-                    raw_usage = res
-                    chunk.choices = []
-                    chunk.usage = CompletionUsage(
-                        prompt_tokens=raw_usage.prefill_count,
-                        completion_tokens=raw_usage.decode_count,
-                        total_tokens=raw_usage.prefill_count + raw_usage.decode_count
-                    )
-                    if create.return_speed:
-                        chunk.usage.prefill_time = res.prefill_time
-                        chunk.usage.decode_time = res.decode_time
-                    else:
-                        chunk.usage.__dict__.pop('prefill_time', None)
-                        chunk.usage.__dict__.pop('decode_time', None)
-                    yield chunk
-                elif isinstance(res, tuple) and len(res) == 2:
-                    token, finish_reason = res
-                    token = re.sub('|'.join(map(re.escape, too_calls_dict.keys())), lambda m: too_calls_dict[m.group(0)], token)
-                    # Detecting model-specific formatting tool call starts
-                    if not tool_call_mode and tool_calls_begin_marker in buffer + token:
-                        tool_call_mode = True
-
-                        # Adjust full_content to remove tool call section
-                        if buffer.endswith(tool_calls_begin_marker):
-                            full_content = full_content[:-len(tool_calls_begin_marker)]
-                        elif tool_calls_begin_marker in (buffer + token):
-                            idx = (buffer + token).find(tool_calls_begin_marker)
-                            full_content = full_content[:-(len(buffer) - idx)]
-                        buffer = ""
-
-                        # Send the current cumulative text content (if any)
-                        if full_content:
-                            chunk.choices = [{
-                                "index": 0,
-                                "delta": {"content": full_content},
-                                "finish_reason": None
-                            }]
-                            yield chunk
-                            full_content = ""
-
-                    # Accumulation of content in non-tool call mode
-                    if not tool_call_mode:
-                        full_content += token
-                        buffer += token
-                        # Keep the buffer at a reasonable size
-                        if len(buffer) > 200:
-                            buffer = buffer[-200:]
-                    else:
-                        # In tool call mode, continue to collect tool call related text
-                        buffer += token
-
-                        # If the tool call end marker is found
-                        if tool_calls_end_marker in buffer:
-                            try:
-                                # Parse and extract tool calling information
-                                tool_calls = getTools(buffer)
-                                if len(tool_calls):
-                                    # reset state
-                                    tool_call_mode = False
-                                    buffer = ""
-
-                                    # Send tool call events
-                                    for idx, tool_call in enumerate(tool_calls):
-                                        # First tool call message
-                                        chunk.choices = [{
-                                            "index": 0,
-                                            "delta": {
-                                                "role": "assistant",
-                                                "content": None,
-                                                "tool_calls": [{
-                                                    "index": idx,
-                                                    "id": tool_call["id"],
-                                                    "type": "function",
-                                                    "function": {
-                                                        "name": tool_call["function"]["name"],
-                                                        "arguments": ""
-                                                    }
-                                                }]
-                                            },
-                                            "finish_reason": None
-                                        }]
-                                        yield chunk
-
-                                        # Sending Parameters
-                                        chunk.choices = [{
-                                            "index": 0,
-                                            "delta": {
-                                                "tool_calls": [{
-                                                    "index": idx,
-                                                    "function": {"arguments": tool_call["function"]["arguments"]}
-                                                }]
-                                            },
-                                            "finish_reason": None
-                                        }]
-                                        yield chunk
-
-                                    # Send Completion Message
-                                    chunk.choices = [{
-                                        "index": 0,
-                                        "delta": {},
-                                        "finish_reason": "tool_calls"
-                                    }]
-                                    yield chunk
-
-                                    # No further processing after return
-                                    return
-                                else:
-                                    # JSON extraction failed, probably incomplete formatting
-                                    logger.warning("Failed to extract JSON from tool call")
-                                    tool_call_mode = False
-                                    buffer = ""
-                            except Exception as e:
-                                logger.error(f"Error processing tool call: {e}")
-                                tool_call_mode = False
-                                buffer = ""
-
-                    # Normal text output (only in non-tool call mode)
-                    if not tool_call_mode and token:
-                        if finish_reason is not None:
-                            chunk.choices = [{
-                                "index": 0,
-                                "delta": {},
-                                "finish_reason": finish_reason
-                            }]
-                            yield chunk
+            try:
+                async for res in interface.inference(input_message, id, create.temperature, create.top_p, create.max_tokens, create.max_completion_tokens):
+                    if isinstance(res, RawUsage):
+                        # Final return on utilization
+                        raw_usage = res
+                        chunk.choices = []
+                        chunk.usage = CompletionUsage(
+                            prompt_tokens=raw_usage.prefill_count,
+                            completion_tokens=raw_usage.decode_count,
+                            total_tokens=raw_usage.prefill_count + raw_usage.decode_count
+                        )
+                        if create.return_speed:
+                            chunk.usage.prefill_time = res.prefill_time
+                            chunk.usage.decode_time = res.decode_time
                         else:
-                            if any(marker in token for marker in [tool_calls_begin_marker, tool_call_begin_marker]):
-                                pass
-                            else:
+                            chunk.usage.__dict__.pop('prefill_time', None)
+                            chunk.usage.__dict__.pop('decode_time', None)
+                        yield chunk
+                    elif isinstance(res, tuple) and len(res) == 2:
+                        token, finish_reason = res
+                        token = re.sub('|'.join(map(re.escape, too_calls_dict.keys())), lambda m: too_calls_dict[m.group(0)], token)
+                        # Detecting model-specific formatting tool call starts
+                        if not tool_call_mode and tool_calls_begin_marker in buffer + token:
+                            tool_call_mode = True
+
+                            # Adjust full_content to remove tool call section
+                            if buffer.endswith(tool_calls_begin_marker):
+                                full_content = full_content[:-len(tool_calls_begin_marker)]
+                            elif tool_calls_begin_marker in (buffer + token):
+                                idx = (buffer + token).find(tool_calls_begin_marker)
+                                full_content = full_content[:-(len(buffer) - idx)]
+                            buffer = ""
+
+                            # Send the current cumulative text content (if any)
+                            if full_content:
                                 chunk.choices = [{
                                     "index": 0,
-                                    "delta": {"content": token},
+                                    "delta": {"content": full_content},
                                     "finish_reason": None
                                 }]
                                 yield chunk
+                                full_content = ""
 
-            # If gotten this far without returning, it means that the full tool call was not detected
-            # Send Routine Completion Message
-            if not tool_call_mode:
-                chunk.choices = [{
-                    "index": 0,
-                    "delta": {},
-                    "finish_reason": "stop"
-                }]
-                yield chunk
+                        # Accumulation of content in non-tool call mode
+                        if not tool_call_mode:
+                            full_content += token
+                            buffer += token
+                            # Keep the buffer at a reasonable size
+                            if len(buffer) > 200:
+                                buffer = buffer[-200:]
+                        else:
+                            # In tool call mode, continue to collect tool call related text
+                            buffer += token
+
+                            # If the tool call end marker is found
+                            if tool_calls_end_marker in buffer:
+                                try:
+                                    # Parse and extract tool calling information
+                                    tool_calls = getTools(buffer)
+                                    if len(tool_calls):
+                                        # reset state
+                                        tool_call_mode = False
+                                        buffer = ""
+
+                                        # Send tool call events
+                                        for idx, tool_call in enumerate(tool_calls):
+                                            # First tool call message
+                                            chunk.choices = [{
+                                                "index": 0,
+                                                "delta": {
+                                                    "role": "assistant",
+                                                    "content": None,
+                                                    "tool_calls": [{
+                                                        "index": idx,
+                                                        "id": tool_call["id"],
+                                                        "type": "function",
+                                                        "function": {
+                                                            "name": tool_call["function"]["name"],
+                                                            "arguments": ""
+                                                        }
+                                                    }]
+                                                },
+                                                "finish_reason": None
+                                            }]
+                                            yield chunk
+
+                                            # Sending Parameters
+                                            chunk.choices = [{
+                                                "index": 0,
+                                                "delta": {
+                                                    "tool_calls": [{
+                                                        "index": idx,
+                                                        "function": {"arguments": tool_call["function"]["arguments"]}
+                                                    }]
+                                                },
+                                                "finish_reason": None
+                                            }]
+                                            yield chunk
+
+                                        # Send Completion Message
+                                        chunk.choices = [{
+                                            "index": 0,
+                                            "delta": {},
+                                            "finish_reason": "tool_calls"
+                                        }]
+                                        yield chunk
+
+                                        # No further processing after return
+                                        return
+                                    else:
+                                        # JSON extraction failed, probably incomplete formatting
+                                        logger.warning("Failed to extract JSON from tool call")
+                                        tool_call_mode = False
+                                        buffer = ""
+                                except Exception as e:
+                                    logger.error(f"Error processing tool call: {e}")
+                                    tool_call_mode = False
+                                    buffer = ""
+
+                        # Normal text output (only in non-tool call mode)
+                        if not tool_call_mode and token:
+                            if finish_reason is not None:
+                                chunk.choices = [{
+                                    "index": 0,
+                                    "delta": {},
+                                    "finish_reason": finish_reason
+                                }]
+                                yield chunk
+                            else:
+                                if any(marker in token for marker in [tool_calls_begin_marker, tool_call_begin_marker]):
+                                    pass
+                                else:
+                                    chunk.choices = [{
+                                        "index": 0,
+                                        "delta": {"content": token},
+                                        "finish_reason": None
+                                    }]
+                                    yield chunk
+
+                # If gotten this far without returning, it means that the full tool call was not detected
+                # Send Routine Completion Message
+                if not tool_call_mode:
+                    chunk.choices = [{
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "stop"
+                    }]
+                    yield chunk
+            except:
+                interface.cancelQuery(id)
 
         return chat_stream_response(request, inner())
     else:

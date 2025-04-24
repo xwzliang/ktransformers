@@ -66,7 +66,8 @@ class BackendInterfaceBase:
         except:
             logger.info(f'Performance statistics not recorded')
 
-
+    def cancelQuery(self, thread_id):
+        raise NotImplementedError
 class ThreadContext:
     '''
     A thread context holding assistant logics 

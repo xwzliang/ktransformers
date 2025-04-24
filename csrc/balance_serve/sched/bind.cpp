@@ -230,6 +230,22 @@ PYBIND11_MODULE(sched_ext, m) {
             return qa;
           }));
 
+  py::class_<scheduler::QueryCancel>(m, "QueryCancel")
+      .def(py::init<>())
+      .def_readwrite("id", &scheduler::QueryCancel::id)
+      .def(py::pickle(
+          [](const scheduler::QueryCancel &self) {
+            return py::make_tuple(self.id);
+          },
+          [](py::tuple t) {
+            if (t.size() != 1)
+              throw std::runtime_error("Invalid state! t.size() = " +
+                                       std::to_string(t.size()));
+            scheduler::QueryCancel qa;
+            qa.id = qa.id = t[0].cast<scheduler::QueryID>();
+            return qa;
+          }));
+
   py::class_<scheduler::Scheduler, std::shared_ptr<scheduler::Scheduler>>(
       m, "Scheduler")
       .def("init", &scheduler::Scheduler::init)

@@ -365,6 +365,13 @@ class BalanceServeInterface(BackendInterfaceBase):
         asyncio.create_task(self.queue_proxy())
         yield
 
+
+    def cancelQuery(self, thread_id):
+        query_id = self.thread_map[thread_id]
+        query_cancel = sched_ext.QueryCancel()
+        query_cancel.id = query_id
+        self.sched_client.cancel_query(query_cancel)
+        
     async def queue_proxy(self):
         print("Queue Proxy Started")
         while True:
@@ -387,11 +394,6 @@ class BalanceServeInterface(BackendInterfaceBase):
         return input_ids
 
     def format_and_tokenize_input_ids(self, thread_id: ObjectID, messages: List):
-        for m in messages:
-            if m["role"] == "system":
-                logger.warning(f'change {m["role"]} to user')
-                m["role"] = "user"
-
         new_messages = [messages[0]]
         for m in messages[1:]:
             if m["role"] == "user" and new_messages[-1]["role"] == "user":
