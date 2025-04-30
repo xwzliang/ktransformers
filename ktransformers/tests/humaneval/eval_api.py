@@ -20,7 +20,10 @@ def generate_text(api_url,question , model_name, stream=False, auth_token=None):
         "messages": [{"content": question, "role": "user"}],
         "model": model_name,
         "stream": stream,
-        "temperature": 0.6
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 20,
+        "max_tokens": 1000,
     }
     print(f"content: {question}")
     response = requests.post(api_url, headers=headers, json=data,verify=False)

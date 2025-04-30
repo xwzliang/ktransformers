@@ -67,10 +67,13 @@ class DataEvaluator:
         """
         从数据文件中加载数据，每条记录对应一个实例
         """
-        splits = {'test': 'all/test-00000-of-00001.parquet', 'validation': 'all/validation-00000-of-00001.parquet',
-                  'dev': 'all/dev-00000-of-00001.parquet',
-                  'auxiliary_train': 'all/auxiliary_train-00000-of-00001.parquet'}
-        df = pd.read_parquet("hf://datasets/cais/mmlu/" + splits["test"])
+        dataset = load_dataset("cais/mmlu", split="test")
+        df = dataset.to_pandas()
+
+        #splits = {'test': 'all/test-00000-of-00001.parquet', 'validation': 'all/validation-00000-of-00001.parquet',
+        #          'dev': 'all/dev-00000-of-00001.parquet',
+        #          'auxiliary_train': 'all/auxiliary_train-00000-of-00001.parquet'}
+        #df = pd.read_parquet("hf://datasets/cais/mmlu/" + splits["test"])
         for _, row in df.iterrows():
             self.data.append(row.to_dict())
 
@@ -86,8 +89,17 @@ class DataEvaluator:
         """
         对生成的文本进行后处理，提取最终答案（只返回最后一个字符）
         """
-        text = text.lstrip('\n').split('\n')[-1]
-        return text[-1:]
+        start_pos = text.find('</think>')
+        if start_pos == -1:
+            start_pos = 0
+        else:
+            start_pos += len('</think>')
+            
+        while start_pos < len(text):
+            if text[start_pos] != '\n':
+                return text[start_pos]
+            start_pos += 1
+        return text[start_pos:start_pos+1]
 
     def score(self, pred, answer):
         """
@@ -107,6 +119,10 @@ def generate_text(api_url, question, model_name, stream=False):
         "messages": [{"content": question, "role": "user"}],
         "model": model_name,
         "stream": stream,
+        #"temperature": 0.7,
+        #"top_p": 0.8,
+        #"top_k": 20,
+        "max_tokens": 10000,
     }
     print("POST data:", data)
     response = requests.post(api_url, headers=headers, json=data, timeout=5000000)
@@ -129,7 +145,7 @@ def main(concurrent_requests, data_evaluator: DataEvaluator, result_file, log_fi
     random.shuffle(data_evaluator.data)
     data_subset = data_evaluator.data[:min(concurrent_requests, len(data_evaluator.data))]
     
-    batch_size = 10  # 每批次最多 10 个实例
+    batch_size = 100  # 每批次最多 10 个实例
 
     def worker(index, data_item):
         nonlocal total_score
@@ -199,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--result", type=str, default="./mmlu_result_silicon.json", help="结果文件保存路径")
     parser.add_argument("--log", type=str, default="./mmlu_result_silicon.log", help="日志文件保存路径")
     parser.add_argument("--model", type=str, default="Pro/deepseek-ai/DeepSeek-V3", help="模型名称或路径")
-    parser.add_argument("--api_url", type=str, default="http://localhost:10006/v1/chat/completions", help="API URL")
+    parser.add_argument("--api_url", type=str, default="http://localhost:10002/v1/chat/completions", help="API URL")
 
     args = parser.parse_args()
     

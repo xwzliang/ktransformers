@@ -47,7 +47,8 @@ class SamplingOptions():
 				self.top_ps = top_ps.unsqueeze(-1)
 			else:	
 				self.top_ps = torch.full((bsz, 1), pretrained_config.top_p, device=device, dtype=torch.float32)
-			self.top_ks = torch.full((bsz, 1), pretrained_config.top_k, device=device, dtype=torch.float32)
+			
+			self.top_ks = torch.full((bsz, 1), 20, device=device, dtype=torch.float32)
 			self.need_min_p_sampling = False
 			self.is_all_greedy = False
 

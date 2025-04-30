@@ -410,7 +410,7 @@ class BalanceServeInterface(BackendInterfaceBase):
         return input_ids
 
     def format_and_tokenize_input_ids(self, thread_id: ObjectID, messages: List):
-        input_str: str = self.tokenizer.apply_chat_template(messages,tokenize=False,add_generation_prompt=True)
+        input_str: str = self.tokenizer.apply_chat_template(messages,tokenize=False,add_generation_prompt=True, enable_thinking=True)
         # drop <think> token in chat template
         if input_str.endswith('<think>\n'):
             input_str = input_str[:-len('<think>\n')]
