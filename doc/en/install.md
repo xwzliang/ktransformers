@@ -116,12 +116,14 @@ Download source code and compile:
   - For Multi-concurrency with 500G RAM:
 
     ```shell
-    USE_BALANCE_SERVE=1 bash ./install.sh
+    USE_BALANCE_SERVE=1 bash ./
+    pip install third_party/custom_flashinfer/
     ```
   - For Multi-concurrency with two cpu and 1T RAM:
 
     ```shell
     USE_BALANCE_SERVE=1 USE_NUMA=1 bash ./install.sh
+    pip install third_party/custom_flashinfer/
     ```
 - For Windows (Windows native temporarily deprecated, please try WSL)
 

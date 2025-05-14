@@ -52,6 +52,7 @@ jobs:
           git submodule init
           git submodule update
           bash install.sh
+          pip install third_party/custom_flashinfer/
       - name: Test Local Chat 1
         run: |
           set -e
