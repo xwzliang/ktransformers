@@ -83,13 +83,64 @@ logging.error("Error logging enabled")
 # Global variable for the subprocess
 model_process = None
 
+def write_log(message, level="INFO"):
+    """Write log message directly to file and console."""
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"{timestamp} - {level} - {message}\n"
+        
+        # Write to console
+        print(log_message, end='')
+        
+        # Write to log file
+        log_file = "/models/ktransformers/logs/server.log"
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(log_message)
+    except Exception as e:
+        print(f"Error writing to log: {str(e)}")
+
+def rotate_log_file(log_file, max_size_mb=10):
+    """Rotate log file if it exceeds the maximum size.
+    
+    Args:
+        log_file (str): Path to the log file
+        max_size_mb (int): Maximum size in MB before rotation
+    """
+    try:
+        if not os.path.exists(log_file):
+            return
+
+        # Get file size in MB
+        file_size_mb = os.path.getsize(log_file) / (1024 * 1024)
+        
+        if file_size_mb > max_size_mb:
+            # Create backup filename with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = f"{log_file}.{timestamp}"
+            
+            # Copy current log file to backup
+            import shutil
+            shutil.copy2(log_file, backup_file)
+            
+            # Empty the current log file
+            with open(log_file, 'w') as f:
+                f.write(f"=== Log rotated at {datetime.now()} ===\n")
+            
+            write_log(f"Log file rotated. Backup created at: {backup_file}")
+    except Exception as e:
+        write_log(f"Error rotating log file: {str(e)}", "ERROR")
+
 def start_model_server():
     """Start the model server as a subprocess."""
     global model_process
     try:
         if model_process is not None:
-            logger.warning("Model server is already running")
+            write_log("Model server is already running", "WARNING")
             return False
+
+        # Check and rotate log file before starting
+        log_file = "/models/ktransformers/logs/server.log"
+        rotate_log_file(log_file)
 
         # Construct the command
         cmd = [
@@ -102,12 +153,11 @@ def start_model_server():
             "--cache_lens", "10240",
             "--host", "0.0.0.0",
             "--port", "8001",
-            ">>", "/models/ktransformers/logs/server.log", "2>&1"  # Redirect both stdout and stderr to log file
+            "2>&1", "|", "tee", "-a", "/models/ktransformers/logs/server.log"  # Use tee to write to both stdout and log file
         ]
 
         # Start the subprocess with shell=True to handle the cd command
-        logger.info(f"Starting model server with command: {' '.join(cmd)}")
-        print(f"Starting model server with command: {' '.join(cmd)}")
+        write_log(f"Starting model server with command: {' '.join(cmd)}")
         
         # Create a process that will capture output and write to log file
         process = subprocess.Popen(
@@ -124,20 +174,25 @@ def start_model_server():
 
         # Check if process started successfully
         if model_process.poll() is not None:
-            logger.error("Failed to start model server")
-            print("Failed to start model server")
+            write_log("Failed to start model server", "ERROR")
             model_process = None
             return False
 
-        logger.info(f"Model server started with PID: {model_process.pid}")
-        print(f"Model server started with PID: {model_process.pid}")
+        write_log(f"Model server started with PID: {model_process.pid}")
 
         # Wait for the specific loading message
         target_message = "loading output_norm.weight to cuda:0"
         max_wait_time = 300  # 5 minutes timeout
         start_time = datetime.now()
+        last_rotation_check = start_time
 
         while (datetime.now() - start_time).total_seconds() < max_wait_time:
+            # Check log rotation every minute
+            current_time = datetime.now()
+            if (current_time - last_rotation_check).total_seconds() >= 60:
+                rotate_log_file(log_file)
+                last_rotation_check = current_time
+
             # Read a line from the process output
             line = process.stdout.readline()
             if not line and process.poll() is not None:
@@ -146,8 +201,7 @@ def start_model_server():
                 
             if line:
                 # Log the output
-                logger.info(line.strip())
-                print(line.strip(), end='')
+                write_log(line.strip())
                 
                 # Check for target message
                 if target_message in line:
@@ -156,14 +210,12 @@ def start_model_server():
                     time.sleep(3)
                     return True
 
-        logger.error("Timeout waiting for model loading message")
+        write_log("Timeout waiting for model loading message", "ERROR")
         return False
 
     except Exception as e:
-        logger.error(f"Error starting model server: {str(e)}")
-        logger.error(traceback.format_exc())
-        print(f"Error starting model server: {str(e)}")
-        print(traceback.format_exc())
+        write_log(f"Error starting model server: {str(e)}", "ERROR")
+        write_log(traceback.format_exc(), "ERROR")
         model_process = None
         return False
 
