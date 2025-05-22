@@ -5,6 +5,14 @@ Version      : 0.1.0
 Copyright (c) 2024 by KVCache.AI, All Rights Reserved. 
 """
 
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=".*TORCH_CUDA_ARCH_LIST is not set.*",
+    module="torch.utils.cpp_extension"
+)
+
 import os
 import platform
 import sys
@@ -13,6 +21,7 @@ project_dir = os.path.dirname(os.path.dirname(__file__))
 sys.path.insert(0, project_dir)
 import torch
 import logging
+logging.disable(logging.CRITICAL)
 from transformers import (
     AutoTokenizer,
     AutoConfig,
@@ -125,7 +134,7 @@ def local_chat(
     if model.generation_config.pad_token_id is None:
         model.generation_config.pad_token_id = model.generation_config.eos_token_id
     model.eval()
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.CRITICAL)
 
     system = platform.system()
     if system == "Windows":

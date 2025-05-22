@@ -1,0 +1,30 @@
+version: '3.8'
+# Doesn't work
+services:
+  ktransformers:
+    image: approachingai/ktransformers:v0.2.4post1-AVX512
+    container_name: ktransformers
+    restart: always
+    gpus: all
+
+    # mount both your code and your model files into /models
+    volumes:
+      - /home/broliang/models:/models
+
+    # expose both ports
+    ports:
+      - "8001:8001"
+      - "8002:8002"
+
+    # start in /models (where both code & model dirs live)
+    working_dir: /models/ktransformers
+
+    # ensure python -m will pick up your mounted code tree
+    environment:
+      - PYTHONPATH=/models/ktransformers
+
+    entrypoint: ["bash", "-c"]
+    command: >
+      python -m ktransformers.server.server_ktransformers
+        --host 0.0.0.0
+        --port 8002
