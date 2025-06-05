@@ -794,11 +794,11 @@ void Query::after_load(
         torch::zeros(shape, torch::TensorOptions().dtype(torch::kInt32))
             .contiguous();
     auto ptr = reinterpret_cast<int32_t *>(block_index.data_ptr());
-    auto vec_idx = kvc2_handle->get_gpu_block_idx();
+    auto vec_idx = handle->get_gpu_block_idx();
     for (size_t i = 0; i < vec_idx.size(); i++) {
       ptr[i] = vec_idx[i];
     }
-    no_kvcache_from = kvc2_handle->matched_length();
+    no_kvcache_from = handle->matched_length();
   }
   if (ok) {
     ctx.query_maintainer->event_loop_queue.enqueue(EventPrepared{

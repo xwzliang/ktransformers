@@ -74,7 +74,7 @@ class SchedulerServer:
                 elif method == 'cancel_query':
                     query_cancel = params.get('query')
                     # 假设您的 Scheduler 类实现了 cancel 方法
-                    self.sched.cancel(query_cancel)
+                    self.sched.cancel_query(query_cancel)
                     response = {'status': 'ok'}
                     worker.send(pickle.dumps(response))
 
