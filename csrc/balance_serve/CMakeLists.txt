@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.21)
-find_program(GCC_COMPILER NAMES g++-13 g++-12 g++-11 REQUIRED)
+find_program(GCC_COMPILER NAMES g++-13 g++-12 g++-11 g++ REQUIRED)
 set(CMAKE_CXX_COMPILER ${GCC_COMPILER})
 
 # 显示选定的编译器
@@ -15,6 +15,25 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS "-O3 -march=native -Wall -Wextra -fPIC")
 set(CMAKE_BUILD_TYPE "Release")
 
+
+if(NOT DEFINED _GLIBCXX_USE_CXX11_ABI)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -c
+        "import torch; print('1' if torch.compiled_with_cxx11_abi() else '0')"
+        OUTPUT_VARIABLE ABI_FLAG
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    set(_GLIBCXX_USE_CXX11_ABI ${ABI_FLAG} CACHE STRING "C++11 ABI setting from PyTorch" FORCE)
+endif()
+
+# 无论是否是自动检测，都传给编译器
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI})
+
+message(STATUS "_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI}")
+
 file(GLOB_RECURSE FMT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp" "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
 
 add_custom_target(
@@ -26,9 +45,6 @@ add_custom_target(
     COMMENT "Running clang-format on all source files"
 )
 
-
-
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
 set(BUILD_SHARED_LIBS ON)
 set(ENABLE_PUSH OFF)
 set(ENABLE_COMPRESSION OFF)
@@ -40,6 +56,7 @@ set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party)
 set(THIRD_PARTY_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 add_subdirectory(${THIRD_PARTY_DIR}/prometheus-cpp ${THIRD_PARTY_BUILD_DIR}/prometheus-cpp EXCLUDE_FROM_ALL)
 add_subdirectory(${THIRD_PARTY_DIR}/xxHash/cmake_unofficial ${THIRD_PARTY_BUILD_DIR}/xxHash EXCLUDE_FROM_ALL)
+set_target_properties(xxhash PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/prometheus-cpp ${CMAKE_CURRENT_BINARY_DIR}/third_party/prometheus-cpp)
 set(SPDLOG_DIR ${THIRD_PARTY_DIR}/spdlog)

@@ -112,7 +112,7 @@ Use our optimized configuration for constrained VRAM:
 
 ```bash
 python ktransformers/server/main.py \
-  --port 10002
+  --port 10002 \
   --model_path <path_to_safetensor_config> \
   --gguf_path <path_to_gguf_files> \
   --optimize_config_path ktransformers/optimize/optimize_rules/DeepSeek-V3-Chat-serve.yaml \
@@ -128,13 +128,16 @@ It features the following arguments:
 
 - `--max_new_tokens`: Maximum number of tokens generated per request.
 - `--cache_lens`: Total length of kvcache allocated by the scheduler. All requests share a kvcache space.
+- `--max_batch_size`: Maximum number of requests (prefill + decode) processed in a single run by the engine. (Supported only by `balance_serve`)
 - `--chunk_size`: Maximum number of tokens processed in a single run by the engine.
   corresponding to 32768 tokens, and the space occupied will be released after the requests are completed.
-- `--max_batch_size`: Maximum number of requests (prefill + decode) processed in a single run by the engine. (Supported only by `balance_serve`)
 - `--backend_type`: `balance_serve` is a multi-concurrency backend engine introduced in version v0.2.4. The original single-concurrency engine is `ktransformers`.
 - `--model_path`: Path to safetensor config path (only config required, not model safetensors).  
-  Please note that, since `ver 0.2.4`, the last segment of `${model_path}` directory name **MUST** be one of the model names defined in `ktransformers/configs/model_configs.json`.
+  Please note that, since `ver 0.2.4`, the last segment of `${model_path}` directory name **MUST** be a local directory that contains the model's configuration files. Hugging Face links (e.g., deepseek-ai/DeepSeek-R1) are not supported at the moment.
 - `--force_think`: Force responding the reasoning tag of `DeepSeek R1`.
+
+The relationship between `max_batch_size`, `cache_lens`, and `max_new_tokens` should satisfy:
+`cache_lens > max_batch_size * max_new_tokens`, otherwise the concurrency will decrease.
 
 ### 2. access server
 

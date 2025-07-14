@@ -23,6 +23,20 @@ Our vision for KTransformers is to serve as a flexible platform for experimentin
 
 <h2 id="Updates">🔥 Updates</h2>
 
+* **July 11, 2025**: Support Kimi-K2. ([Tutorial](./doc/en/Kimi-K2.md))
+
+* **June 30, 2025**: Support 3-layer (GPU-CPU-Disk) [prefix cache](./doc/en/prefix_cache.md) reuse.
+
+* **May 14, 2025**: Support Intel Arc GPU ([Tutorial](./doc/en/xpu.md)).
+
+* **Apr 29, 2025**: Support AMX-Int8、 AMX-BF16 and Qwen3MoE ([Tutorial](./doc/en/AMX.md))
+
+https://github.com/user-attachments/assets/fafe8aec-4e22-49a8-8553-59fb5c6b00a2
+
+
+
+
+* **Apr 9, 2025**: Experimental support for LLaMA 4 models ([Tutorial](./doc/en/llama4.md)).
 * **Apr 2, 2025**: Support Multi-concurrency. ([Tutorial](./doc/en/balance-serve.md)).
 
 https://github.com/user-attachments/assets/faa3bda2-928b-45a7-b44f-21e12ec84b8a
@@ -107,6 +121,16 @@ https://github.com/user-attachments/assets/a865e5e4-bca3-401e-94b8-af3c080e6c12
 <h2 id="quick-start">🚀 Quick Start</h2>
 
 Getting started with KTransformers is simple! Follow the steps below to set up and start using it.
+
+we have already supported vendors:
+
+- Metax
+- Sanechips (ZhuFeng V1.0)
+- Intel
+- Ascend
+- Kunpeng
+- AMD
+
 
 ### 📥 Installation
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-find_program(GCC_COMPILER NAMES g++-13 g++-12 g++-11 REQUIRED)
+find_program(GCC_COMPILER NAMES g++-13 g++-12 g++-11 g++ REQUIRED)
 set(CMAKE_CXX_COMPILER ${GCC_COMPILER})
 
 project(kvcache-manager VERSION 0.1.0)
@@ -17,7 +17,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(BUILD_TEST OFF)
 set(BUILD_PYTHON_EXT OFF)
 
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+if(NOT DEFINED _GLIBCXX_USE_CXX11_ABI)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} -c
+        "import torch; print('1' if torch.compiled_with_cxx11_abi() else '0')"
+        OUTPUT_VARIABLE ABI_FLAG
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    set(_GLIBCXX_USE_CXX11_ABI ${ABI_FLAG} CACHE STRING "C++11 ABI setting from PyTorch" FORCE)
+endif()
+
+# 无论是否是自动检测，都传给编译器
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI})
+
+message(STATUS "_GLIBCXX_USE_CXX11_ABI=${_GLIBCXX_USE_CXX11_ABI}")
 
 # set(USE_IO_URING ON)
 if(USE_IO_URING)
@@ -55,6 +71,8 @@ find_package(Torch REQUIRED PATHS "${TORCH_INSTALL_PREFIX}/share/cmake/Torch" NO
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../third_party)
 
+# include_directories(/usr/include/tbb)
+# link_directories(/usr/lib64)
 find_package(TBB REQUIRED)
 find_package(CUDA REQUIRED)
 
@@ -102,3 +120,13 @@ if(BUILD_PYTHON_EXT)
         DESTINATION ${CMAKE_BINARY_DIR}/output)
 endif()
 
+if(USE_IO_URING)
+    set(PHOTON_ENABLE_URING ON CACHE BOOL "Enable io_uring")
+endif()
+
+set(PHOTON_CXX_STANDARD 14 CACHE INTERNAL "C++ standard")
+
+set(CMAKE_CXX_FLAGS "-O3 -march=native")
+message(STATUS "CMAKE_CXX_FLAGS of PhotonLibOS: ${CMAKE_CXX_FLAGS}")
+
+add_subdirectory(${THIRD_PARTY_DIR}/PhotonLibOS ${THIRD_PARTY_BUILD_DIR}/PhotonLibOS)

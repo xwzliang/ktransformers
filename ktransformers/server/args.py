@@ -1,6 +1,7 @@
 import argparse
 from ktransformers.server.backend.args import ConfigArgs, default_args
 from ktransformers.util.utils import get_free_ports
+from transformers import AutoConfig
 
 class ArgumentParser:
     def __init__(self, cfg):
@@ -20,6 +21,7 @@ class ArgumentParser:
         parser.add_argument(
             "--device", type=str, default=self.cfg.model_device, help="Warning: Abandoning this parameter"
         )
+        parser.add_argument("--architectures", type=str, default=self.cfg.model_name)
         parser.add_argument("--gguf_path", type=str, default=self.cfg.gguf_path)
         parser.add_argument("--optimize_config_path", default=None, type=str, required=False)
         parser.add_argument("--cpu_infer", type=int, default=self.cfg.cpu_infer)
@@ -69,6 +71,9 @@ class ArgumentParser:
         parser.add_argument("--amnesia", type=bool, default=self.cfg.amnesia)
         parser.add_argument("--batch_size", type=int, default=self.cfg.batch_size)
         parser.add_argument("--cache_lens", type=int, default=self.cfg.cache_lens)
+
+        # kvc2 config
+        parser.add_argument("--kvc2_config_dir", type=str, default=self.cfg.kvc2_config_dir)
 
         # log configs
         # log level: debug, info, warn, error, crit
@@ -123,10 +128,7 @@ class ArgumentParser:
         else:
             args.model_dir = self.cfg.model_dir
             args.model_path = self.cfg.model_path
-        # set config from args
-        for key, value in vars(args).items():
-            if value is not None and hasattr(self.cfg, key):
-                setattr(self.cfg, key, value)
+        
         # we add the name not match args individually
         self.cfg.model_device = args.device
         self.cfg.mount_web = args.web
@@ -134,7 +136,16 @@ class ArgumentParser:
         self.cfg.server_port = args.port
         self.cfg.user_force_think = args.force_think
         
-        args.gpu_memory_size = args.cache_lens*2*576*61
+        model_config = AutoConfig.from_pretrained(args.model_dir, trust_remote_code=True)
+        if model_config.architectures[0] == "Qwen3MoeForCausalLM" or model_config.architectures[0] == "Qwen2MoeForCausalLM" :
+            args.gpu_memory_size = args.cache_lens*2*2*model_config.num_hidden_layers*model_config.num_key_value_heads*model_config.head_dim
+            args.architectures = model_config.architectures[0]
+        else:
+            args.gpu_memory_size = args.cache_lens*2*576*61
+        # set config from args
+        for key, value in vars(args).items():
+            if value is not None and hasattr(self.cfg, key):
+                setattr(self.cfg, key, value)
         self.cfg.gpu_memory_size = args.gpu_memory_size
         free_ports = get_free_ports(3, [args.port])
         args.sched_port = free_ports[0]

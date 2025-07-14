@@ -38,13 +38,14 @@ Some preparation:
       export CUDA_PATH=$CUDA_PATH:/usr/local/cuda
   fi
   ```
-- Linux-x86_64 with gcc, g++ and cmake (using Ubuntu as an example)
+- Linux-x86_64 with gcc, g++>=11 and cmake>=3.25 (using Ubuntu as an example)
+- **Note**: The default CMake version in Ubuntu 22.04 LTS or higher may not support newer CUDA language dialects (e.g., CUDA 20). This can cause errors such as Target "cmTC_xxxxxx" requires the language dialect "CUDA20", but CMake does not know the compile flags to use to enable it. To resolve this, install a newer CMake version, for instance, by adding the Kitware APT repository.
 
   ```sh
   sudo apt-get update 
   sudo apt-get install build-essential cmake ninja-build patchelf
   ```
-- We recommend using [Miniconda3](https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh) or [Anaconda3](https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh) to create a virtual environment with Python=3.11 to run our program. Assuming your Anaconda installation directory is `~/anaconda3`, you should ensure that the version identifier of the GNU C++standard library used by Anaconda includes `GLIBCXX-3.4.32`
+- We recommend using [Miniconda3](https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh) or [Anaconda3](https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh) to create a virtual environment with Python=3.11 to run our program. Assuming your Anaconda installation directory is `~/anaconda3`, you should ensure that the version identifier of the GNU C++standard library used by Anaconda includes `GLIBCXX_3.4.32`
 
   ```sh
   conda create --name ktransformers python=3.11
@@ -122,7 +123,7 @@ Download source code and compile:
     ```shell
     USE_BALANCE_SERVE=1 USE_NUMA=1 bash ./install.sh
     ```
-- For Windows (Windows native temprarily deprecated, please try WSL)
+- For Windows (Windows native temporarily deprecated, please try WSL)
 
   ```shell
   install.bat
@@ -165,7 +166,7 @@ It features the following arguments:
   > Note: <strong>.safetensors</strong> files are not required in the directory. We only need config files to build model and tokenizer.
   >
 - `--gguf_path` (required): Path of a directory containing GGUF files which could that can be downloaded from [Hugging Face](https://huggingface.co/mzwing/DeepSeek-V2-Lite-Chat-GGUF/tree/main). Note that the directory should only contains GGUF of current model, which means you need one separate directory for each model.
-- `--optimize_config_path` (required except for Qwen2Moe and DeepSeek-V2): Path of YAML file containing optimize rules. There are two rule files pre-written in the [ktransformers/optimize/optimize_rules](ktransformers/optimize/optimize_rules) directory for optimizing DeepSeek-V2 and Qwen2-57B-A14, two SOTA MoE models.
+- `--optimize_config_path` (required except for Qwen2Moe and DeepSeek-V2): Path of YAML file containing optimize rules. There are two rule files pre-written in the [ktransformers/optimize/optimize_rules](https://github.com/kvcache-ai/ktransformers/tree/main/ktransformers/optimize/optimize_rules) directory for optimizing DeepSeek-V2 and Qwen2-57B-A14, two SOTA MoE models.
 - `--max_new_tokens`: Int (default=1000). Maximum number of new tokens to generate.
 - `--cpu_infer`: Int (default=10). The number of CPUs used for inference. Should ideally be set to the (total number of cores - 2).
 

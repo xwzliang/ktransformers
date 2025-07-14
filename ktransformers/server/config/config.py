@@ -34,12 +34,15 @@ class Config(metaclass=Singleton):
 
         user_path: str = os.path.expanduser("~")
         localstore_path: str = os.path.join(user_path, ".ktransformers")
+        kvc2_config_dir = os.path.join(localstore_path, "kvc2")
         config_path: str = os.path.join(localstore_path, Config.CONFIG_FILE_NAME)
         if not os.path.exists(config_yaml):
             print(f"Can't find config file, {config_yaml}")
             exit(-1)
         if not os.path.exists(localstore_path):
             os.mkdir(localstore_path)
+        if not os.path.exists(kvc2_config_dir):
+            os.mkdir(kvc2_config_dir)
         if not os.path.exists(config_path):
             shutil.copyfile(config_yaml, config_path)
         with open(config_path, "r", encoding="utf-8") as fp:
@@ -62,10 +65,13 @@ class Config(metaclass=Singleton):
         self.localstore_path: str = os.path.join(self.user_path, ".ktransformers")
         # log configs
         self.log_dir = os.path.join(self.localstore_path, cfg["log"]["dir"])
+        if not os.path.exists(self.log_dir):
+            os.mkdir(self.log_dir)
         self.log_file = cfg["log"]["file"]
         self.log_level = cfg["log"]["level"]
         self.backup_count = cfg["log"]["backup_count"]
 
+        self.kvc2_config_dir = os.path.join(self.localstore_path, "kvc2")
         # server configs
         self.server: dict = cfg.get("server", {})
         self.server_ip = self.server.get("ip", "0.0.0.0")
@@ -94,6 +100,7 @@ class Config(metaclass=Singleton):
         # to make sure it consistent with previous version
         self.model_path: str = self.model_dir
         self.model_name: str = self.model.get("name", "")
+        self.architectures: str = self.model.get("name", "")
         self.model_device: str = self.model.get("device", "cuda:0")
         self.gguf_path: Optional[str] = self.model.get("gguf_path", None)
         self.use_cuda_graph = self.model.get("use_cuda_graph", True)
@@ -196,6 +203,7 @@ class Config(metaclass=Singleton):
         self.gpu_memory_size = 2*576*61*self.cache_lens
         self.utilization_percentage = 1.0 #cfg["kvc2"]["utilization_percentage"]
         self.cpu_memory_size_GB = cfg["kvc2"]["cpu_memory_size_GB"]
+        self.kvc2_disk_path = cfg["kvc2"]["disk_path"]
         # only support 2 prefill task
         self.max_prefill_batch_size = 2
         self.max_decode_batch_size = self.max_batch_size - self.max_prefill_batch_size 

@@ -1,5 +1,5 @@
 from typing import Any, AsyncIterator, List, Optional, Set
-from ktransformers.models.custom_cache import KDeepSeekV3Cache
+from ktransformers.models.custom_cache import KDeepSeekV3Cache, KGQACache
 from transformers import (
     AutoTokenizer,
     AutoConfig,
@@ -22,6 +22,9 @@ from ktransformers.server.config.log import logger
 from ktransformers.optimize.optimize import optimize_and_load_gguf
 from ktransformers.models.custom_modeling_deepseek_v3 import KDeepseekV3ForCausalLM
 from ktransformers.models.custom_modeling_deepseek_v2 import KDeepseekV2ForCausalLM
+from ktransformers.models.custom_modeling_qwen2_moe import KQwen2MoeForCausalLM
+from ktransformers.models.custom_modeling_qwen3_moe import KQwen3MoeForCausalLM
+from ktransformers.models.configuration_qwen3_moe import Qwen3MoeConfig
 from ktransformers.server.balance_serve.inference.model_runner import ModelRunner 
 from ktransformers.server.balance_serve.inference.sampling.sampler import Sampler, SamplingOptions
 from ktransformers.server.balance_serve.inference.query_manager import QueryManager
@@ -30,6 +33,7 @@ from ktransformers.server.balance_serve.sched_rpc import SchedulerClient
 from ktransformers.server.balance_serve.settings import sched_ext
 from torch.multiprocessing import Queue
 import torch.multiprocessing as mp
+from multiprocessing.synchronize import Event
 from ktransformers.server.schemas.endpoints.chat import RawUsage
 from ktransformers.server.utils.multi_timer import Profiler
 import zmq
@@ -41,16 +45,23 @@ import threading
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 import os
-
+import pickle
+import subprocess
+import tempfile
+import atexit
+import signal
 
 
 ktransformer_rules_dir = (
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "./optimize/optimize_rules/") 
 )
 default_optimize_rules = {
+    # "DeepseekV3ForCausalLM": ktransformer_rules_dir + "Moonlight-16B-A3B-serve.yaml",
     "DeepseekV3ForCausalLM": ktransformer_rules_dir + "DeepSeek-V3-Chat-serve.yaml",
-    "Qwen2MoeForCausalLM": ktransformer_rules_dir + "Qwen2-57B-A14B-Instruct-serve.yaml",
+    "Qwen2MoeForCausalLM": ktransformer_rules_dir + "Qwen2-serve.yaml",
+    "Qwen3MoeForCausalLM": ktransformer_rules_dir + "Qwen3Moe-serve.yaml",
 }
+
 
 async def chat_stream(queue: asyncio.Queue, tokenizer: AutoTokenizer):
     streamer = TextStreamer(tokenizer)
@@ -77,7 +88,8 @@ def fill_generated_tokens(query_updates: list[sched_ext.QueryUpdate], generated_
         query_updates[i].generated_token = generated_tokens[i].item()
         if not query_manager.query_map[query_updates[i].id].is_prefill:
             pos = query_updates[i].active_position
-            query_manager.query_map[query_updates[i].id].query_tokens[pos] = generated_tokens[i]
+            if pos < query_manager.query_map[query_updates[i].id].max_length:
+                query_manager.query_map[query_updates[i].id].query_tokens[pos] = generated_tokens[i]
 
 def report_last_time_performance(profiler: Profiler):
         try:
@@ -98,8 +110,8 @@ class Engine:
     model_runner: ModelRunner
     sampler: Sampler
     query_manager: QueryManager
-    cache: KDeepSeekV3Cache
-    def __init__(self, args: ConfigArgs = default_args, generated_token_queue:Queue = None, broadcast_endpoint: str = None):
+    cache: KDeepSeekV3Cache | KGQACache
+    def __init__(self, args: ConfigArgs = default_args, generated_token_queue:Queue = None, broadcast_endpoint: str = None, kvcache_event: Event = None):
         self.args = args
 
         # 子进程和父进程无法共享 config 变量
@@ -110,25 +122,32 @@ class Engine:
         self.device = self.args.device
         self.sched_client = SchedulerClient(args.sched_port)
         self.updates = []
-        config = AutoConfig.from_pretrained(args.model_dir, trust_remote_code=True) 
-        self.cache = KDeepSeekV3Cache(config, self.args.page_size)
+
+        try: 
+            config = AutoConfig.from_pretrained(args.model_dir, trust_remote_code=True) 
+        except:
+            if args.model_name == "Qwen3Moe": 
+                config = Qwen3MoeConfig.from_pretrained(args.model_dir, trust_remote_code=True)
+            else:
+                assert False, f"model {args.model_name} not supported" 
+
             
         self.gen_queue = generated_token_queue
             
-        print(f"Getting inference context from sched_client.")
-        inference_context = self.sched_client.get_inference_context_raw()
-        print(f"Got inference context, sending it to subscribers.")
-        inference_context = self.sched_client.rebuild_inferece_context(inference_context)
-        self.cache.load(inference_context)
-        print(f"kv_cache loaded successfully.")
-
-        self.block_num = inference_context.k_cache[0].size(1)
         with torch.device("meta"):
             if config.architectures[0] == "DeepseekV3ForCausalLM":
+                self.cache = KDeepSeekV3Cache(config, self.args.page_size)
                 self.model = KDeepseekV3ForCausalLM(config, self.cache)
             elif config.architectures[0] == "DeepseekV2ForCausalLM":
+                self.cache = KDeepSeekV3Cache(config, self.args.page_size)
                 self.model = KDeepseekV2ForCausalLM(config, self.cache)
-        # print(self.block_num)
+            elif config.architectures[0] == "Qwen2MoeForCausalLM" or config.architectures[0] == "Qwen3MoeForCausalLM":
+                self.cache = KGQACache(config, self.args.page_size)
+                if config.architectures[0] == "Qwen2MoeForCausalLM":
+                    self.model = KQwen2MoeForCausalLM(config, self.cache)
+                else:
+                    self.model = KQwen3MoeForCausalLM(config, self.cache)
+
 
         context = zmq.Context()
 
@@ -165,10 +184,24 @@ class Engine:
             self.model.generation_config.pad_token_id = self.model.generation_config.eos_token_id
 
         self.model.eval()
-        #@TODO add config
-        self.model.init_wrapper(self.args.use_cuda_graph, self.device, args.max_batch_size, self.block_num)
+        kvcache_event.set()
+        # load kvcache
+        print(f"Getting inference context from sched_client.")
+        inference_context = self.sched_client.get_inference_context_raw()
+        print(f"Got inference context, sending it to subscribers.")
+        inference_context = self.sched_client.rebuild_inferece_context(inference_context)
+        self.cache.load(inference_context)
+        print(f"kv_cache loaded successfully.")
+        
 
-        self.model_runner = ModelRunner(self.model, self.device, self.args.use_cuda_graph, page_size = args.page_size)
+        self.block_num = inference_context.k_cache[0].size(1)
+        self.model_runner = ModelRunner(self.model, self.device, self.args.use_cuda_graph, page_size = args.page_size, block_num=self.block_num)
+        #@TODO add config
+        if config.architectures[0] == "Qwen2MoeForCausalLM" or config.architectures[0] == "Qwen3MoeForCausalLM":
+            self.model.init_wrapper(self.args.use_cuda_graph, self.device, max(self.model_runner.cuda_graphs), args.max_batch_size, self.block_num) 
+        else:
+            self.model.init_wrapper(self.args.use_cuda_graph, self.device, args.max_batch_size, self.block_num)
+
         self.sampler = Sampler()
         self.query_manager = QueryManager(device = self.device, page_size = args.page_size)
 
@@ -221,7 +254,7 @@ class Engine:
             
             if self.batch is not None:
                 self.model_runner.sync()
-                print(f"Model execution time (GPU): {self.model_runner.model_time:.3f} ms")
+                print(f"Model execution time (GPU): {self.model_runner.model_time:.3f} ms, {1000/self.model_runner.model_time:.3f} tokens/s")
                 # if self.rank == 0:
                 
                 generated_tokens, probs = self.sampling( self.model_runner.output)
@@ -240,8 +273,8 @@ class BalanceServeThreadContext(ThreadContext):
         return local_messages
     
 
-def run_engine(args, token_queue, broadcast_endpoint, event):
-    engine = Engine(args, token_queue, broadcast_endpoint)
+def run_engine(args, token_queue, broadcast_endpoint, event, kvcache_event):
+    engine = Engine(args, token_queue, broadcast_endpoint, kvcache_event)
     if args.use_cuda_graph:
         engine.model_runner.warmup()
         
@@ -264,6 +297,7 @@ class BalanceServeInterface(BackendInterfaceBase):
     # thread_related
     last_request_id: Optional[str] = None
     ever_generated_ids: Set[int] = set()
+
     def __init__(self, args: ConfigArgs = default_args):
         self.args = args
         self.queue_map:dict[int,asyncio.Queue] = {}
@@ -277,12 +311,73 @@ class BalanceServeInterface(BackendInterfaceBase):
         self.streamer = TextStreamer(self.tokenizer)
 
         start_event = ctx.Event()
+        kvcache_event = ctx.Event()
 
-        p = ctx.Process(target=run_engine, args=(self.args, self.token_queue, self.broadcast_endpoint, start_event))
+        p = ctx.Process(target=run_engine, args=(self.args, self.token_queue, self.broadcast_endpoint, start_event, kvcache_event))
         p.start()
         processes.append(p)
+        kvcache_event.wait()
+
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            pickle.dump(args, temp_file)
+            temp_file_path = temp_file.name
+        current_file = __file__
+        target_file = os.path.join(os.path.dirname(current_file), "..", "..", "balance_serve", "sched_rpc.py")
+        target_file = os.path.normpath(target_file)
+        log_path = os.path.join(args.log_dir, "rpc.log")
+        log = open(log_path, "a") 
+        sched_process = subprocess.Popen(
+            ["python3", target_file, "--config", temp_file_path], 
+            stdout=log, 
+            stderr=log
+        )
+        print("sched_rpc started with PID:", sched_process.pid)
+
+        def signal_handler(signum, frame):
+            print(f"Received signal {signum}, shutting down...")
+            cleanup()
+            os._exit(0) 
+
+        def cleanup():
+            print("Cleaning up...")
+
+            for p in processes:
+                if p.is_alive():
+                    print(f"Terminating subprocess {p.pid}")
+                    p.terminate()
+                    p.join()
+
+            if sched_process and sched_process.poll() is None:
+                print(f"Terminating sched_process {sched_process.pid}")
+                sched_process.terminate()
+                sched_process.wait()
+        signal.signal(signal.SIGINT, signal_handler)   
+        signal.signal(signal.SIGTERM, signal_handler)
+
         start_event.wait()
-        
+    
+    def get_params(self, temperature: Optional[float] = None, top_p: Optional[float] = None, 
+                   max_tokens: Optional[float] = None, max_completion_tokens: Optional[float] = None) -> tuple[float, float]:
+        """Get sampling parameters and handle default values and edge cases"""
+        if max_tokens is not None:
+            max_completion_tokens = max_tokens
+        if max_completion_tokens is None:
+            max_completion_tokens = self.args.max_new_tokens
+        else:
+            max_completion_tokens = min(self.args.max_new_tokens, max_completion_tokens)
+        if temperature is None:
+            temperature = self.args.temperature
+        if top_p is None:
+            top_p = self.args.top_p
+            
+        if temperature == 0:
+            temperature = 0.0001
+        if top_p == 0:
+            top_p = 0.0001
+            
+        return temperature, top_p, max_completion_tokens
+
     def run_queue_proxy(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -315,34 +410,22 @@ class BalanceServeInterface(BackendInterfaceBase):
         return input_ids
 
     def format_and_tokenize_input_ids(self, thread_id: ObjectID, messages: List):
-        for m in messages:
-            if m["role"] == "system":
-                logger.warning(f'change {m["role"]} to user')
-                m["role"] = "user"
-
-        new_messages = [messages[0]]
-        for m in messages[1:]:
-            if m["role"] == "user" and new_messages[-1]["role"] == "user":
-                logger.warning("merge two adjacent user messages")
-                new_messages[-1]["content"] += '\n' + m["content"]
-            else:
-                new_messages.append(m)
-        input_str: str = self.tokenizer.apply_chat_template(new_messages,tokenize=False,add_generation_prompt=True)
+        input_str: str = self.tokenizer.apply_chat_template(messages,tokenize=False,add_generation_prompt=True)
         # drop <think> token in chat template
         if input_str.endswith('<think>\n'):
             input_str = input_str[:-len('<think>\n')]
-        input_ids = self.tokenizer.encode(input_str, return_tensors="pt").to(self.args.device)
+        input_ids = self.tokenizer.encode(input_str, return_tensors="pt", add_special_tokens=False).to(self.args.device)
         logger.debug(f"get input ids of shape {input_ids.shape}")
         return input_ids
     
-    async def inference(self, local_messages, thread_id: str, temperature: Optional[float] = None, top_p: Optional[float] = None):
+    async def inference(self, local_messages, thread_id: str, temperature: Optional[float] = None, top_p: Optional[float] = None, 
+                        max_tokens: Optional[float] = None, max_completion_tokens: Optional[float] = None):
         profiler = Profiler()
         profiler.create_and_start_timer("tokenize")
         
         if isinstance(local_messages, List):
             input_ids = self.format_and_tokenize_input_ids(thread_id, local_messages)
         elif isinstance(local_messages, str):
-            #local_messages = local_messages[0]['content']
             input_ids = self.tokenize_prompt(local_messages)
         else:
             raise ValueError("local_messages should be List or str")
@@ -352,12 +435,9 @@ class BalanceServeInterface(BackendInterfaceBase):
                 [input_ids, token_thinks], dim=1
             )
 
-        
         profiler.pause_timer("tokenize")
 
         profiler.create_and_start_timer("prefill")
-
-        
         
         query_add = sched_ext.QueryAdd()
         query_add.query_token =  input_ids[0].tolist()
@@ -365,15 +445,20 @@ class BalanceServeInterface(BackendInterfaceBase):
         query_add.query_length = query_length
         profiler.set_counter("prefill", query_length)
         #@TODO add server
-        stop_criteria =  [self.tokenizer.encode(self.tokenizer.eos_token, add_special_tokens=False),self.tokenizer.encode("<|im_end|>")]
+        stop_criteria =  [self.tokenizer.encode(self.tokenizer.eos_token, add_special_tokens=False),self.tokenizer.encode("<|im_end|>", add_special_tokens=True)]
         query_add.stop_criteria = stop_criteria
+        
+        temperature, top_p, max_new_tokens = self.get_params(temperature, top_p, max_tokens, max_completion_tokens)
+            
         query_add.sample_options.temperature = temperature
-        if top_p == 0:
-            top_p = 0.0001
         query_add.sample_options.top_p = top_p
-        query_add.estimated_length = min(self.args.cache_lens, query_length+self.args.max_new_tokens)
+        query_add.estimated_length = min(self.args.cache_lens, query_length+max_new_tokens)
+
+        if query_add.estimated_length < query_add.query_length:
+            raise Exception(f'query too long: estimated_length={query_add.estimated_length} < query_length={query_add.query_length}')
+
         query_id = self.sched_client.add_query(query_add)
-        queue = asyncio.Queue(maxsize=self.args.max_new_tokens)
+        queue = asyncio.Queue(maxsize=max_new_tokens)
         self.queue_map[query_id] = queue
         self.thread_map[thread_id] = query_id
         is_first_token = True
@@ -393,7 +478,7 @@ class BalanceServeInterface(BackendInterfaceBase):
         profiler.pause_timer("decode")
         report_last_time_performance(profiler)
         yield self.streamer.end(), None
-        if profiler.get_counter('decode') >= self.args.max_new_tokens - 1:
+        if profiler.get_counter('decode') >= max_new_tokens - 1:
             yield "", "length"
         else:
             yield "", "stop"
