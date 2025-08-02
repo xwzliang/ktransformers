@@ -129,6 +129,20 @@ def rotate_log_file(log_file, max_size_mb=10):
         write_log(f"Error rotating log file: {str(e)}", "ERROR")
 
 
+def _drain_process_output(process, ready_event: threading.Event, target_message: str):
+    try:
+        for line in iter(process.stdout.readline, ""):
+            if not line:
+                break
+            write_log(line.strip())
+            if target_message in line:
+                ready_event.set()
+    except Exception as e:
+        write_log(f"Output reader thread error: {e}", "ERROR")
+    finally:
+        process.stdout.close()
+
+
 def start_model_server():
     """Start the model server as a subprocess."""
     global model_process
@@ -155,11 +169,11 @@ def start_model_server():
             "--model_path",
             "/models/deepseek/r1-0528/config",
             "--max_new_tokens",
-            "10240",
+            "8192",
             "--cpu_infer",
             "150",
             "--cache_lens",
-            "10240",
+            "8192",
             "--host",
             "0.0.0.0",
             "--port",
@@ -199,37 +213,24 @@ def start_model_server():
 
         # Wait for the specific loading message
         target_message = "loading model.norm.weight to cuda:0"
-        max_wait_time = 300  # 5 minutes timeout
-        start_time = datetime.now()
-        last_rotation_check = start_time
+        ready_event = threading.Event()
+        reader_thread = threading.Thread(
+            target=_drain_process_output,
+            args=(process, ready_event, target_message),
+            daemon=True,
+        )
+        reader_thread.start()
 
-        while (datetime.now() - start_time).total_seconds() < max_wait_time:
-            # Check log rotation every minute
-            current_time = datetime.now()
-            if (current_time - last_rotation_check).total_seconds() >= 60:
-                rotate_log_file(log_file)
-                last_rotation_check = current_time
+        # Wait up to timeout for readiness
+        if not ready_event.wait(timeout=300):
+            write_log("Timeout waiting for model loading message", "ERROR")
+            return False
 
-            # Read a line from the process output
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                # Process has ended
-                break
+        # small extra delay to stabilize
+        import time
 
-            if line:
-                # Log the output
-                write_log(line.strip())
-
-                # Check for target message
-                if target_message in line:
-                    # Wait additional 3 seconds after finding the message
-                    import time
-
-                    time.sleep(3)
-                    return True
-
-        write_log("Timeout waiting for model loading message", "ERROR")
-        return False
+        time.sleep(3)
+        return True
 
     except Exception as e:
         write_log(f"Error starting model server: {str(e)}", "ERROR")
