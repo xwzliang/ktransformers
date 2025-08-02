@@ -1,5 +1,6 @@
 import os
 import re
+import threading
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 import uvicorn.logging
@@ -156,7 +157,7 @@ def start_model_server():
             "--max_new_tokens",
             "10240",
             "--cpu_infer",
-            "82",
+            "150",
             "--cache_lens",
             "10240",
             "--host",
@@ -331,6 +332,18 @@ def mount_app_routes(mount_app: FastAPI):
             return {"status": "Model server running", "model_type": "deepseek-coder", "pid": model_process.pid}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @mount_app.post("/self-shutdown")
+    async def self_shutdown():
+        def exit_later():
+            # short delay to ensure response is sent
+            import time
+
+            time.sleep(0.1)
+            os._exit(0)  # immediate hard exit
+
+        threading.Thread(target=exit_later, daemon=True).start()
+        return {"status": "shutting down"}
 
 
 def create_app():
